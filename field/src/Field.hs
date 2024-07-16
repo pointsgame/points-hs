@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE TupleSections #-}
 
 module Field
   ( Pos,
@@ -146,7 +147,7 @@ wave field startPos f = wave' S.empty (S.singleton startPos)
     wave' passed front
       | S.null front = passed
       | otherwise = wave' (S.union passed front) (nextFront passed front)
-    nextFront passed front = S.filter f $ S.fromList (filter (isInside field) $ concatMap neighborhood $ S.elems front) S.\\ passed
+    nextFront passed front = S.filter f $ S.fromList (concatMap (filter (isInside field) . neighborhood) (S.elems front)) S.\\ passed
     neighborhood pos = [n pos, s pos, w pos, e pos]
 
 emptyField :: Int -> Int -> Field
@@ -288,13 +289,13 @@ capture point player =
     EmptyBaseCell _ -> BaseCell player False
 
 mergeCaptureChains :: Pos -> [NEL.NonEmpty Pos] -> [Pos] -- TODO why reverse?
-mergeCaptureChains pos chains = if length chains < 2 then reverse (concat $ map NEL.toList chains) else mergeCaptureChains' chains
+mergeCaptureChains pos chains = if length chains < 2 then reverse (concatMap NEL.toList chains) else mergeCaptureChains' chains
   where
     mergeCaptureChains' chains' =
       let firstChain = head chains'
           lastChain = last chains'
        in if NEL.head firstChain /= lastChain NEL.!! (length lastChain - 2)
-            then foldl (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concat $ map NEL.toList chains'
+            then foldl (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
             else mergeCaptureChains' $ tail chains' ++ [firstChain]
 
 putPoint :: Pos -> Player -> Field -> Field
@@ -319,7 +320,7 @@ putPoint pos player field
           (realCaptures, emptyCaptures) = partition ((/= 0) . thd'') captures
           capturedCount = sum $ map thd'' realCaptures
           freedCount = sum $ map fth'' realCaptures
-          newEmptyBase = filter (\pos' -> cells field ! pos' == EmptyCell) $ concatMap snd'' emptyCaptures
+          newEmptyBase = concatMap (filter (\pos' -> cells field ! pos' == EmptyCell) . snd'') emptyCaptures
           realCaptured = concatMap snd'' realCaptures
           captureChain = mergeCaptureChains pos $ map fst'' realCaptures
           newScoreRed = if player == Red then scoreRed field + capturedCount else scoreRed field - freedCount
@@ -336,7 +337,7 @@ putPoint pos player field
                       lastSurroundChain = Just (captureChain, player),
                       cells =
                         cells field
-                          // ( zip (S.toList enemyEmptyBase) (repeat EmptyCell)
+                          // ( map (,EmptyCell) (S.toList enemyEmptyBase)
                                  ++ (pos, PointCell player)
                                  : map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured
                              )
@@ -349,7 +350,7 @@ putPoint pos player field
                       lastSurroundChain = Just (NEL.toList enemyEmptyBaseChain, enemyPlayer),
                       cells =
                         cells field
-                          // ( zip (S.toList enemyEmptyBase) (repeat $ BaseCell enemyPlayer False)
+                          // ( map (,BaseCell enemyPlayer False) (S.toList enemyEmptyBase)
                                  ++ [(pos, BaseCell enemyPlayer True)]
                              )
                     }
@@ -370,7 +371,7 @@ putPoint pos player field
                       cells =
                         cells field
                           // ( (pos, PointCell player)
-                                 : zip newEmptyBase (repeat $ EmptyBaseCell player)
+                                 : map (,EmptyBaseCell player) newEmptyBase
                                  ++ map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured
                              )
                     }
