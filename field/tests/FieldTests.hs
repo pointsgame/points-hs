@@ -10,10 +10,10 @@ import Test.HUnit
 
 constructField :: String -> Field
 constructField image =
-  let width = length $ takeWhile (/= ' ') $ dropWhile (== ' ') image
-      lines' = chunksOf width $ filter (/= ' ') image
-      assertion = Exception.assert $ all (\line -> length line == width) lines'
-      height = length lines'
+  let width' = length $ takeWhile (/= ' ') $ dropWhile (== ' ') image
+      lines' = chunksOf width' $ filter (/= ' ') image
+      assertion = Exception.assert $ all (\line -> length line == width') lines'
+      height' = length lines'
       moves' =
         map (\(x, y, char) -> ((x, y), if isLower char then Red else Black)) $
           sortOn
@@ -23,7 +23,7 @@ constructField image =
                 (x, char) <- zip [0 ..] line,
                 toLower char /= toUpper char
             ]
-   in assertion $ foldl (\field (pos, player) -> putPoint pos player field) (emptyField width height) moves'
+   in assertion $ foldl (\field (pos, player) -> putPoint pos player field) (emptyField width' height') moves'
 
 simpleSurround :: Assertion
 simpleSurround =

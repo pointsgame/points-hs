@@ -27,6 +27,7 @@ where
 
 import Data.Array
 import Data.List
+import Data.List.NonEmpty qualified as NEL
 import Data.Maybe
 import Data.Set qualified as S
 import Player
@@ -190,25 +191,22 @@ getNextPos centerPos pos =
         (1, 1) -> w pos
         _ -> error ("getNextPos: not adjacent points: " ++ show centerPos ++ " and " ++ show pos ++ ".")
 
-square :: [Pos] -> Int
+square :: NEL.NonEmpty Pos -> Int
 square chain = square' chain 0
   where
-    square' [a] acc = acc + skewProduct a (head chain)
-    square' (h : t) acc = square' t (acc + skewProduct h (head t))
-    square' _ _ = error "square: bug."
+    square' (a NEL.:| []) acc = acc + skewProduct a (NEL.head chain)
+    square' (h1 NEL.:| h2 : t) acc = square' (h2 NEL.:| t) (acc + skewProduct h1 h2)
     skewProduct (x1, y1) (x2, y2) = x1 * y2 - y1 * x2
 
-buildChain :: Field -> Pos -> Pos -> Player -> Maybe [Pos]
+buildChain :: Field -> Pos -> Pos -> Player -> Maybe (NEL.NonEmpty Pos)
 buildChain field startPos nextPos player = if length chain > 2 && square chain > 0 then Just chain else Nothing
   where
-    chain = getChain startPos [nextPos, startPos]
-    getChain start list@(h : _) =
+    chain = getChain startPos $ nextPos NEL.:| [startPos]
+    getChain start list@(h NEL.:| _) =
       let nextPos' = getNextPlayerPos h (getFirstNextPos h start)
-       in if
-            | nextPos' == startPos -> list
-            | elem nextPos' list -> getChain h $ dropWhile (/= nextPos') list
-            | otherwise -> getChain h $ nextPos' : list
-    getChain _ _ = error "buildChain: bug."
+       in if nextPos' == startPos
+            then list
+            else getChain h $ fromMaybe (nextPos' NEL.<| list) $ NEL.nonEmpty $ NEL.dropWhile (/= nextPos') list
     getNextPlayerPos centerPos pos
       | pos == startPos = pos
       | isPlayer field pos player = pos
@@ -250,22 +248,22 @@ getInputPoints field pos player =
           else list3
    in list4
 
-posInsideRing :: Pos -> [Pos] -> Bool
+posInsideRing :: Pos -> NEL.NonEmpty Pos -> Bool
 posInsideRing (x, y) ring =
-  let ring' = uniq $ map snd $ filter ((<= x) . fst) ring
+  let ring' = uniq $ map snd $ NEL.filter ((<= x) . fst) ring
       ring''
         | last ring' == y = ring' ++ [head $ if head ring' == y then tail ring' else ring']
         | head ring' == y = last ring' : ring'
         | otherwise = ring'
    in odd $ count (\(a, b, c) -> b == y && ((a < b && c > b) || (a > b && c < b))) $ zip3 ring'' (tail ring'') (tail $ tail ring'')
 
-getInsideRing :: Field -> Pos -> [Pos] -> S.Set Pos
+getInsideRing :: Field -> Pos -> NEL.NonEmpty Pos -> S.Set Pos
 getInsideRing field startPos ring =
-  let ringSet = S.fromList ring
+  let ringSet = S.fromList $ NEL.toList ring
    in wave field startPos $ flip S.notMember ringSet
 
-getEmptyBase :: Field -> Pos -> Player -> ([Pos], [Pos])
-getEmptyBase field startPos player = (emptyBaseChain, filter (\pos -> isEmptyBase field pos player) $ S.elems $ getInsideRing field startPos emptyBaseChain)
+getEmptyBase :: Field -> Pos -> Player -> (NEL.NonEmpty Pos, S.Set Pos)
+getEmptyBase field startPos player = (emptyBaseChain, S.filter (\pos -> isEmptyBase field pos player) $ getInsideRing field startPos emptyBaseChain)
   where
     emptyBaseChain = getEmptyBaseChain (w startPos)
     getEmptyBaseChain pos
@@ -289,14 +287,14 @@ capture point player =
       | otherwise -> BaseCell player False
     EmptyBaseCell _ -> BaseCell player False
 
-mergeCaptureChains :: Pos -> [[Pos]] -> [Pos]
-mergeCaptureChains pos chains = if length chains < 2 then reverse (concat chains) else mergeCaptureChains' chains
+mergeCaptureChains :: Pos -> [NEL.NonEmpty Pos] -> [Pos] -- TODO why reverse?
+mergeCaptureChains pos chains = if length chains < 2 then reverse (concat $ map NEL.toList chains) else mergeCaptureChains' chains
   where
     mergeCaptureChains' chains' =
       let firstChain = head chains'
           lastChain = last chains'
-       in if head firstChain /= lastChain !! (length lastChain - 2)
-            then foldl (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concat chains'
+       in if NEL.head firstChain /= lastChain NEL.!! (length lastChain - 2)
+            then foldl (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concat $ map NEL.toList chains'
             else mergeCaptureChains' $ tail chains' ++ [firstChain]
 
 putPoint :: Pos -> Player -> Field -> Field
@@ -338,7 +336,7 @@ putPoint pos player field
                       lastSurroundChain = Just (captureChain, player),
                       cells =
                         cells field
-                          // ( zip enemyEmptyBase (repeat EmptyCell)
+                          // ( zip (S.toList enemyEmptyBase) (repeat EmptyCell)
                                  ++ (pos, PointCell player)
                                  : map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured
                              )
@@ -348,10 +346,10 @@ putPoint pos player field
                     { scoreRed = if player == Red then scoreRed field else scoreRed field + 1,
                       scoreBlack = if player == Black then scoreBlack field else scoreBlack field + 1,
                       moves = newMoves,
-                      lastSurroundChain = Just (enemyEmptyBaseChain, enemyPlayer),
+                      lastSurroundChain = Just (NEL.toList enemyEmptyBaseChain, enemyPlayer),
                       cells =
                         cells field
-                          // ( zip enemyEmptyBase (repeat $ BaseCell enemyPlayer False)
+                          // ( zip (S.toList enemyEmptyBase) (repeat $ BaseCell enemyPlayer False)
                                  ++ [(pos, BaseCell enemyPlayer True)]
                              )
                     }
