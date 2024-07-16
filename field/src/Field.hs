@@ -70,62 +70,62 @@ sw = s . w
 se :: Pos -> Pos
 se = s . e
 
-data Point = EmptyPoint |
-             PlayerPoint Player |
-             BasePoint Player Bool |
-             EmptyBasePoint Player
+data Cell = EmptyCell |
+            PointCell Player |
+            BaseCell Player Bool |
+            EmptyBaseCell Player
   deriving (Eq, Show, Read)
 
 data Field = Field { scoreRed :: Int
                    , scoreBlack :: Int
                    , moves :: [(Pos, Player)]
                    , lastSurroundChain :: Maybe ([Pos], Player)
-                   , points :: Array Pos Point
+                   , cells :: Array Pos Cell
                    }
 
 fieldWidth :: Field -> Int
 fieldWidth field =
-  let ((x1, _), (x2, _)) = bounds (points field)
+  let ((x1, _), (x2, _)) = bounds (cells field)
   in x2 - x1 + 1
 
 fieldHeight :: Field -> Int
 fieldHeight field =
-  let ((_, y1), (_, y2)) = bounds (points field)
+  let ((_, y1), (_, y2)) = bounds (cells field)
   in y2 - y1 + 1
 
 fieldIsFull :: Field -> Bool
-fieldIsFull = notElem EmptyPoint . elems . points
+fieldIsFull = notElem EmptyCell . elems . cells
 
 isInField :: Field -> Pos -> Bool
-isInField = inRange . bounds . points
+isInField = inRange . bounds . cells
 
 isPuttingAllowed :: Field -> Pos -> Bool
 isPuttingAllowed field pos | not $ isInField field pos = False
                            | otherwise =
-  case points field ! pos of
-    EmptyPoint       -> True
-    EmptyBasePoint _ -> True
-    _                -> False
+  case cells field ! pos of
+    EmptyCell       -> True
+    EmptyBaseCell _ -> True
+    _               -> False
 
 isPlayer :: Field -> Pos -> Player -> Bool
 isPlayer field pos player | not $ isInField field pos = False
                           | otherwise =
-  case points field ! pos of
-    PlayerPoint player' -> player' == player
-    BasePoint player' _ -> player' == player
-    _                   -> False
+  case cells field ! pos of
+    PointCell player'  -> player' == player
+    BaseCell player' _ -> player' == player
+    _                  -> False
 
 isPlayersPoint :: Field -> Pos -> Player -> Bool
 isPlayersPoint field pos player | not $ isInField field pos = False
-                                | otherwise = points field ! pos == PlayerPoint player
+                                | otherwise = cells field ! pos == PointCell player
 
 isCapturedPoint :: Field -> Pos -> Player -> Bool
 isCapturedPoint field pos player | not $ isInField field pos = False
-                                 | otherwise = points field ! pos == BasePoint (nextPlayer player) True
+                                 | otherwise = cells field ! pos == BaseCell (nextPlayer player) True
 
 isEmptyBase :: Field -> Pos -> Player -> Bool
 isEmptyBase field pos player | not $ isInField field pos = False
-                             | otherwise = points field ! pos == EmptyBasePoint player
+                             | otherwise = cells field ! pos == EmptyBaseCell player
 
 wave :: Field -> Pos -> (Pos -> Bool) -> S.Set Pos
 wave field startPos f = wave' S.empty (S.singleton startPos)
@@ -139,7 +139,7 @@ emptyField width height = Field { scoreRed = 0
                                 , scoreBlack = 0
                                 , moves = []
                                 , lastSurroundChain = Nothing
-                                , points = listArray ((0, 0), (width - 1, height - 1)) (repeat EmptyPoint)
+                                , cells = listArray ((0, 0), (width - 1, height - 1)) (repeat EmptyCell)
                                 }
 
 getFirstNextPos :: Pos -> Pos -> Pos
@@ -243,16 +243,16 @@ getEmptyBase field startPos player = (emptyBaseChain, filter (\pos -> isEmptyBas
                                                 result = find (posInsideRing startPos) chains
                                             in fromMaybe (getEmptyBaseChain (w pos)) result
 
-capture :: Point -> Player -> Point
+capture :: Cell -> Player -> Cell
 capture point player =
   case point of
-    EmptyPoint                                  -> BasePoint player False
-    PlayerPoint player' | player' == player     -> PlayerPoint player'
-                        | otherwise             -> BasePoint player True
-    BasePoint player' enemy | player' == player -> BasePoint player' enemy
-                            | enemy             -> PlayerPoint player
-                            | otherwise         -> BasePoint player False
-    EmptyBasePoint _                            -> BasePoint player False
+    EmptyCell                                  -> BaseCell player False
+    PointCell player' | player' == player      -> PointCell player'
+                      | otherwise              -> BaseCell player True
+    BaseCell player' enemy | player' == player -> BaseCell player' enemy
+                           | enemy             -> PointCell player
+                           | otherwise         -> BaseCell player False
+    EmptyBaseCell _                            -> BaseCell player False
 
 mergeCaptureChains :: Pos -> [[Pos]] -> [Pos]
 mergeCaptureChains pos chains = if length chains < 2 then reverse (concat chains) else mergeCaptureChains' chains where
@@ -267,7 +267,7 @@ putPoint :: Pos -> Player -> Field -> Field
 putPoint pos player field | not (isPuttingAllowed field pos) = error "putPos: putting in the pos is not allowed."
                           | otherwise =
   let enemyPlayer = nextPlayer player
-      point = points field ! pos
+      point = cells field ! pos
       (enemyEmptyBaseChain, enemyEmptyBase) = getEmptyBase field pos enemyPlayer
       inputPoints = getInputPoints field pos player
       captures = mapMaybe (\(chainPos, capturedPos) ->
@@ -279,35 +279,35 @@ putPoint pos player field | not (isPuttingAllowed field pos) = error "putPos: pu
       (realCaptures, emptyCaptures) = partition ((/= 0) . thd'') captures
       capturedCount = sum $ map thd'' realCaptures
       freedCount = sum $ map fth'' realCaptures
-      newEmptyBase = filter (\pos' -> points field ! pos' == EmptyPoint) $ concatMap snd'' emptyCaptures
+      newEmptyBase = filter (\pos' -> cells field ! pos' == EmptyCell) $ concatMap snd'' emptyCaptures
       realCaptured = concatMap snd'' realCaptures
       captureChain = mergeCaptureChains pos $ map fst'' realCaptures
       newScoreRed = if player == Red then scoreRed field + capturedCount else scoreRed field - freedCount
       newScoreBlack = if player == Black then scoreBlack field + capturedCount else scoreBlack field - freedCount
       newMoves = (pos, player) : moves field
-  in if point == EmptyBasePoint enemyPlayer
+  in if point == EmptyBaseCell enemyPlayer
      then if not $ null captures
           then Field { scoreRed = newScoreRed,
                        scoreBlack = newScoreBlack,
                        moves = newMoves,
                        lastSurroundChain = Just (captureChain, player),
-                       points = points field // (zip enemyEmptyBase (repeat EmptyPoint) ++
-                                                 (pos, PlayerPoint player) :
-                                                 map (\pos' -> (pos', capture (points field ! pos') player)) realCaptured) }
+                       cells = cells field // (zip enemyEmptyBase (repeat EmptyCell) ++
+                                               (pos, PointCell player) :
+                                               map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured) }
           else Field { scoreRed = if player == Red then scoreRed field else scoreRed field + 1,
                        scoreBlack = if player == Black then scoreBlack field else scoreBlack field + 1,
                        moves = newMoves,
                        lastSurroundChain = Just (enemyEmptyBaseChain, enemyPlayer),
-                       points = points field // (zip enemyEmptyBase (repeat $ BasePoint enemyPlayer False) ++
-                                                 [(pos, BasePoint enemyPlayer True)]) }
-     else if point == EmptyBasePoint player
+                       cells = cells field // (zip enemyEmptyBase (repeat $ BaseCell enemyPlayer False) ++
+                                               [(pos, BaseCell enemyPlayer True)]) }
+     else if point == EmptyBaseCell player
      then field { moves = newMoves,
                   lastSurroundChain = Nothing,
-                  points = points field // [(pos, PlayerPoint player)] }
+                  cells = cells field // [(pos, PointCell player)] }
      else Field { scoreRed = newScoreRed,
                   scoreBlack = newScoreBlack,
                   moves = newMoves,
                   lastSurroundChain = if null captureChain then Nothing else Just (captureChain, player),
-                  points = points field // ((pos, PlayerPoint player) :
-                                            zip newEmptyBase (repeat $ EmptyBasePoint player) ++
-                                            map (\pos' -> (pos', capture (points field ! pos') player)) realCaptured) }
+                  cells = cells field // ((pos, PointCell player) :
+                                          zip newEmptyBase (repeat $ EmptyBaseCell player) ++
+                                          map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured) }
