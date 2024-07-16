@@ -1,12 +1,12 @@
 module FieldTests where
 
-import Data.List
+import Control.Exception.Base qualified as Exception
 import Data.Char
-import qualified Control.Exception.Base as Exception
+import Data.List
 import Data.List.Split
-import Test.HUnit
-import Player
 import Field
+import Player
+import Test.HUnit
 
 constructField :: String -> Field
 constructField image =
@@ -14,22 +14,26 @@ constructField image =
       lines' = chunksOf width $ filter (/= ' ') image
       assertion = Exception.assert $ all (\line -> length line == width) lines'
       height = length lines'
-      moves' = map (\(x, y, char) -> ((x, y), if isLower char then Red else Black)) $
-                 sortOn (\(_, _, char) -> (toLower char, isLower char))
-                 [ (x, y, char)
-                 | (y, line) <- zip [0 ..] lines'
-                 , (x, char) <- zip [0 ..] line
-                 , toLower char /= toUpper char
-                 ]
-  in assertion $ foldl (\field (pos, player) -> putPoint pos player field) (emptyField width height) moves'
+      moves' =
+        map (\(x, y, char) -> ((x, y), if isLower char then Red else Black)) $
+          sortOn
+            (\(_, _, char) -> (toLower char, isLower char))
+            [ (x, y, char)
+              | (y, line) <- zip [0 ..] lines',
+                (x, char) <- zip [0 ..] line,
+                toLower char /= toUpper char
+            ]
+   in assertion $ foldl (\field (pos, player) -> putPoint pos player field) (emptyField width height) moves'
 
 simpleSurround :: Assertion
 simpleSurround =
-  let image = " .a. \
-              \ cBa \
-              \ .a. "
+  let image =
+        " .a. \
+        \ cBa \
+        \ .a. "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
@@ -37,11 +41,13 @@ simpleSurround =
 
 surroundEmptyTerritory :: Assertion
 surroundEmptyTerritory =
-  let image = " .a. \
-              \ a.a \
-              \ .a. "
+  let image =
+        " .a. \
+        \ a.a \
+        \ .a. "
       field = constructField image
-  in do scoreRed field @?= 0
+   in do
+        scoreRed field @?= 0
         scoreBlack field @?= 0
         lastSurroundChain field @?= Nothing
         isPuttingAllowed field (1, 1) @? "Putting in pos (1, 1) is not allowed."
@@ -52,11 +58,13 @@ surroundEmptyTerritory =
 
 movePriority :: Assertion
 movePriority =
-  let image = " .aB. \
-              \ aCaB \
-              \ .aB. "
+  let image =
+        " .aB. \
+        \ aCaB \
+        \ .aB. "
       field = constructField image
-  in do scoreRed field @?= 0
+   in do
+        scoreRed field @?= 0
         scoreBlack field @?= 1
         fmap snd (lastSurroundChain field) @?= Just Black
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
@@ -64,12 +72,14 @@ movePriority =
 
 movePriorityBig :: Assertion
 movePriorityBig =
-  let image = " .B.. \
-              \ BaB. \
-              \ aCaB \
-              \ .aB. "
+  let image =
+        " .B.. \
+        \ BaB. \
+        \ aCaB \
+        \ .aB. "
       field = constructField image
-  in do scoreRed field @?= 0
+   in do
+        scoreRed field @?= 0
         scoreBlack field @?= 2
         fmap snd (lastSurroundChain field) @?= Just Black
         fmap (length . fst) (lastSurroundChain field) @?= Just 6
@@ -77,35 +87,41 @@ movePriorityBig =
 
 onionSurroundings :: Assertion
 onionSurroundings =
-  let image = " ...c... \
-              \ ..cBc.. \
-              \ .cBaBc. \
-              \ ..cBc.. \
-              \ ...c... "
+  let image =
+        " ...c... \
+        \ ..cBc.. \
+        \ .cBaBc. \
+        \ ..cBc.. \
+        \ ...c... "
       field = constructField image
-  in do scoreRed field @?= 4
+   in do
+        scoreRed field @?= 4
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
 
 applyControlSurroundingInSameTurn :: Assertion
 applyControlSurroundingInSameTurn =
-  let image = " .a. \
-              \ aBa \
-              \ .a. "
+  let image =
+        " .a. \
+        \ aBa \
+        \ .a. "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
 
 doubleSurround :: Assertion
 doubleSurround =
-  let image = " .a.a. \
-              \ aAbAa \
-              \ .a.a. "
+  let image =
+        " .a.a. \
+        \ aAbAa \
+        \ .a.a. "
       field = constructField image
-  in do scoreRed field @?= 2
+   in do
+        scoreRed field @?= 2
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
@@ -113,11 +129,13 @@ doubleSurround =
 
 doubleSurroundWithEmptyPart :: Assertion
 doubleSurroundWithEmptyPart =
-  let image = " .b.b.. \
-              \ b.zAb. \
-              \ .b.b.. "
+  let image =
+        " .b.b.. \
+        \ b.zAb. \
+        \ .b.b.. "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
@@ -125,17 +143,19 @@ doubleSurroundWithEmptyPart =
         isPuttingAllowed field (1, 1) @? "Putting in pos (1, 1) is not allowed."
         not (isPuttingAllowed field (3, 1)) @? "Putting in pos (3, 1) is allowed."
 
-shouldNotLeaveEmptyInside :: Assertion --TODO: check with another last point
+shouldNotLeaveEmptyInside :: Assertion -- TODO: check with another last point
 shouldNotLeaveEmptyInside =
-  let image = " .aaaa.. \
-              \ a....a. \
-              \ a.b...a \
-              \ .z.bC.a \
-              \ a.b...a \
-              \ a....a. \
-              \ .aaaa.. "
+  let image =
+        " .aaaa.. \
+        \ a....a. \
+        \ a.b...a \
+        \ .z.bC.a \
+        \ a.b...a \
+        \ a....a. \
+        \ .aaaa.. "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 18
@@ -149,17 +169,19 @@ shouldNotLeaveEmptyInside =
 
 holeInsideSurrounding :: Assertion
 holeInsideSurrounding =
-  let image = " ....c.... \
-              \ ...c.c... \
-              \ ..c...c.. \
-              \ .c..a..c. \
-              \ c..a.a..c \
-              \ .c..a..c. \
-              \ ..c...c.. \
-              \ ...cBc... \
-              \ ....d.... "
+  let image =
+        " ....c.... \
+        \ ...c.c... \
+        \ ..c...c.. \
+        \ .c..a..c. \
+        \ c..a.a..c \
+        \ .c..a..c. \
+        \ ..c...c.. \
+        \ ...cBc... \
+        \ ....d.... "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 16
@@ -169,17 +191,19 @@ holeInsideSurrounding =
 
 holeInsideSurroundingAfterControlSurrounding :: Assertion
 holeInsideSurroundingAfterControlSurrounding =
-  let image = " ....b.... \
-              \ ...b.b... \
-              \ ..b...b.. \
-              \ .b..a..b. \
-              \ b..a.a..b \
-              \ .b..a..b. \
-              \ ..b...b.. \
-              \ ...bCb... \
-              \ ....b.... "
+  let image =
+        " ....b.... \
+        \ ...b.b... \
+        \ ..b...b.. \
+        \ .b..a..b. \
+        \ b..a.a..b \
+        \ .b..a..b. \
+        \ ..b...b.. \
+        \ ...bCb... \
+        \ ....b.... "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 16
@@ -188,17 +212,19 @@ holeInsideSurroundingAfterControlSurrounding =
 
 surroundingDoesNotExpand :: Assertion
 surroundingDoesNotExpand =
-  let image = " ....a.... \
-              \ ...a.a... \
-              \ ..a.a.a.. \
-              \ .a.a.a.a. \
-              \ a.a.aBa.a \
-              \ .a.a.a.a. \
-              \ ..a.a.a.. \
-              \ ...a.a... \
-              \ ....a.... "
+  let image =
+        " ....a.... \
+        \ ...a.a... \
+        \ ..a.a.a.. \
+        \ .a.a.a.a. \
+        \ a.a.aBa.a \
+        \ .a.a.a.a. \
+        \ ..a.a.a.. \
+        \ ...a.a... \
+        \ ....a.... "
       field = constructField image
-  in do scoreRed field @?= 1
+   in do
+        scoreRed field @?= 1
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
@@ -210,12 +236,14 @@ surroundingDoesNotExpand =
 
 twoSurroundingsWithCommonBorder :: Assertion
 twoSurroundingsWithCommonBorder =
-  let image = " .a.. \
-              \ aAa. \
-              \ .bAa \
-              \ ..a. "
+  let image =
+        " .a.. \
+        \ aAa. \
+        \ .bAa \
+        \ ..a. "
       field = constructField image
-  in do scoreRed field @?= 2
+   in do
+        scoreRed field @?= 2
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 6
@@ -223,13 +251,15 @@ twoSurroundingsWithCommonBorder =
 
 threeSurroundingsWithCommonBorders :: Assertion
 threeSurroundingsWithCommonBorders =
-  let image = " ..a.. \
-              \ .aAa. \
-              \ ..bAa \
-              \ .aAa. \
-              \ ..a.. "
+  let image =
+        " ..a.. \
+        \ .aAa. \
+        \ ..bAa \
+        \ .aAa. \
+        \ ..a.. "
       field = constructField image
-  in do scoreRed field @?= 3
+   in do
+        scoreRed field @?= 3
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
