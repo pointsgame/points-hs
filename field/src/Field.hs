@@ -15,9 +15,9 @@ module Field
     scoreBlack,
     moves,
     lastSurroundChain,
-    fieldWidth,
-    fieldHeight,
-    fieldIsFull,
+    width,
+    height,
+    isFull,
     isPuttingAllowed,
     isPlayer,
     emptyField,
@@ -90,25 +90,25 @@ data Field = Field
     cells :: !(Array Pos Cell)
   }
 
-fieldWidth :: Field -> Int
-fieldWidth field =
+width :: Field -> Int
+width field =
   let ((x1, _), (x2, _)) = bounds (cells field)
    in x2 - x1 + 1
 
-fieldHeight :: Field -> Int
-fieldHeight field =
+height :: Field -> Int
+height field =
   let ((_, y1), (_, y2)) = bounds (cells field)
    in y2 - y1 + 1
 
-fieldIsFull :: Field -> Bool
-fieldIsFull = notElem EmptyCell . elems . cells
+isFull :: Field -> Bool
+isFull = notElem EmptyCell . elems . cells
 
-isInField :: Field -> Pos -> Bool
-isInField = inRange . bounds . cells
+isInside :: Field -> Pos -> Bool
+isInside = inRange . bounds . cells
 
 isPuttingAllowed :: Field -> Pos -> Bool
 isPuttingAllowed field pos
-  | not $ isInField field pos = False
+  | not $ isInside field pos = False
   | otherwise =
       case cells field ! pos of
         EmptyCell -> True
@@ -117,7 +117,7 @@ isPuttingAllowed field pos
 
 isPlayer :: Field -> Pos -> Player -> Bool
 isPlayer field pos player
-  | not $ isInField field pos = False
+  | not $ isInside field pos = False
   | otherwise =
       case cells field ! pos of
         PointCell player' -> player' == player
@@ -126,17 +126,17 @@ isPlayer field pos player
 
 isPlayersPoint :: Field -> Pos -> Player -> Bool
 isPlayersPoint field pos player
-  | not $ isInField field pos = False
+  | not $ isInside field pos = False
   | otherwise = cells field ! pos == PointCell player
 
 isCapturedPoint :: Field -> Pos -> Player -> Bool
 isCapturedPoint field pos player
-  | not $ isInField field pos = False
+  | not $ isInside field pos = False
   | otherwise = cells field ! pos == BaseCell (nextPlayer player) True
 
 isEmptyBase :: Field -> Pos -> Player -> Bool
 isEmptyBase field pos player
-  | not $ isInField field pos = False
+  | not $ isInside field pos = False
   | otherwise = cells field ! pos == EmptyBaseCell player
 
 wave :: Field -> Pos -> (Pos -> Bool) -> S.Set Pos
@@ -145,17 +145,17 @@ wave field startPos f = wave' S.empty (S.singleton startPos)
     wave' passed front
       | S.null front = passed
       | otherwise = wave' (S.union passed front) (nextFront passed front)
-    nextFront passed front = S.filter f $ S.fromList (filter (isInField field) $ concatMap neighborhood $ S.elems front) S.\\ passed
+    nextFront passed front = S.filter f $ S.fromList (filter (isInside field) $ concatMap neighborhood $ S.elems front) S.\\ passed
     neighborhood pos = [n pos, s pos, w pos, e pos]
 
 emptyField :: Int -> Int -> Field
-emptyField width height =
+emptyField width' height' =
   Field
     { scoreRed = 0,
       scoreBlack = 0,
       moves = [],
       lastSurroundChain = Nothing,
-      cells = listArray ((0, 0), (width - 1, height - 1)) (repeat EmptyCell)
+      cells = listArray ((0, 0), (width' - 1, height' - 1)) (repeat EmptyCell)
     }
 
 getFirstNextPos :: Pos -> Pos -> Pos
@@ -193,10 +193,10 @@ getNextPos centerPos pos =
 square :: [Pos] -> Int
 square chain = square' chain 0
   where
-    square' [a] acc = acc + fiberBundle a (head chain)
-    square' (h : t) acc = square' t (acc + fiberBundle h (head t))
+    square' [a] acc = acc + skewProduct a (head chain)
+    square' (h : t) acc = square' t (acc + skewProduct h (head t))
     square' _ _ = error "square: bug."
-    fiberBundle (x1, y1) (x2, y2) = x1 * y2 - y1 * x2
+    skewProduct (x1, y1) (x2, y2) = x1 * y2 - y1 * x2
 
 buildChain :: Field -> Pos -> Pos -> Player -> Maybe [Pos]
 buildChain field startPos nextPos player = if length chain > 2 && square chain > 0 then Just chain else Nothing
