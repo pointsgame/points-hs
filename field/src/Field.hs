@@ -71,16 +71,16 @@ se :: Pos -> Pos
 se = s . e
 
 data Cell = EmptyCell |
-            PointCell Player |
-            BaseCell Player Bool |
-            EmptyBaseCell Player
+            PointCell !Player |
+            BaseCell !Player !Bool |
+            EmptyBaseCell !Player
   deriving (Eq, Show, Read)
 
-data Field = Field { scoreRed :: Int
-                   , scoreBlack :: Int
-                   , moves :: [(Pos, Player)]
-                   , lastSurroundChain :: Maybe ([Pos], Player)
-                   , cells :: Array Pos Cell
+data Field = Field { scoreRed :: !Int
+                   , scoreBlack :: !Int
+                   , moves :: ![(Pos, Player)]
+                   , lastSurroundChain :: !(Maybe ([Pos], Player))
+                   , cells :: !(Array Pos Cell)
                    }
 
 fieldWidth :: Field -> Int
