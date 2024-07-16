@@ -1,0 +1,34 @@
+cabal-version: 3.8
+
+name: points
+version: 1.0.0
+license: AGPL-3.0-or-later
+license-file: LICENSE.txt
+author: kurnevsky
+maintainer: kurnevsky@gmail.com
+build-type: Simple
+
+common defaults
+  default-language: GHC2021
+  ghc-options: -O2 -Wall
+  build-depends: base
+
+library
+  import: defaults
+  hs-source-dirs: field/src
+  exposed-modules: Player
+                 , Field
+  build-depends: array
+               , containers
+
+test-suite points-field-tests
+  import: defaults
+  type: exitcode-stdio-1.0
+  hs-source-dirs: field/tests
+  main-is: Tests.hs
+  other-modules: FieldTests
+  build-depends: split
+               , HUnit
+               , test-framework
+               , test-framework-hunit
+               , points
