@@ -242,10 +242,10 @@ posInsideRing (x, y) ring =
   case NEL.nonEmpty $ uniq $ map snd $ NEL.filter ((<= x) . fst) ring of
     Just coords ->
       let coords'
-            | NEL.last coords == y = NEL.appendList coords [head $ if NEL.head coords == y then NEL.tail coords else NEL.toList coords]
+            | NEL.last coords == y = NEL.appendList coords $ maybeToList $ listToMaybe $ if NEL.head coords == y then NEL.tail coords else NEL.toList coords
             | NEL.head coords == y = NEL.last coords NEL.<| coords
             | otherwise = coords
-       in odd $ count (\(a, b, c) -> b == y && ((a < b && c > b) || (a > b && c < b))) $ zip3 (NEL.toList coords') (NEL.tail coords') (tail $ NEL.tail coords')
+       in odd $ count (\(a, b, c) -> b == y && ((a < b && c > b) || (a > b && c < b))) $ zip3 (NEL.toList coords') (NEL.tail coords') (drop 1 $ NEL.tail coords')
     Nothing -> False
 
 getInsideRing :: Field -> Pos -> NEL.NonEmpty Pos -> S.Set Pos
