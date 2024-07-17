@@ -239,12 +239,14 @@ getInputPoints field pos player =
 
 posInsideRing :: Pos -> NEL.NonEmpty Pos -> Bool
 posInsideRing (x, y) ring =
-  let ring' = uniq $ map snd $ NEL.filter ((<= x) . fst) ring
-      ring''
-        | last ring' == y = ring' ++ [head $ if head ring' == y then tail ring' else ring']
-        | head ring' == y = last ring' : ring'
-        | otherwise = ring'
-   in odd $ count (\(a, b, c) -> b == y && ((a < b && c > b) || (a > b && c < b))) $ zip3 ring'' (tail ring'') (tail $ tail ring'')
+  case NEL.nonEmpty $ uniq $ map snd $ NEL.filter ((<= x) . fst) ring of
+    Just coords ->
+      let coords'
+            | NEL.last coords == y = NEL.appendList coords [head $ if NEL.head coords == y then NEL.tail coords else NEL.toList coords]
+            | NEL.head coords == y = NEL.last coords NEL.<| coords
+            | otherwise = coords
+       in odd $ count (\(a, b, c) -> b == y && ((a < b && c > b) || (a > b && c < b))) $ zip3 (NEL.toList coords') (NEL.tail coords') (tail $ NEL.tail coords')
+    Nothing -> False
 
 getInsideRing :: Field -> Pos -> NEL.NonEmpty Pos -> S.Set Pos
 getInsideRing field startPos ring =
