@@ -100,6 +100,23 @@ onionSurroundings =
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
 
+deepOnionSurroundings :: Assertion
+deepOnionSurroundings =
+  let image =
+        " ...D... \
+        \ ..DcD.. \
+        \ .DcBcD. \
+        \ DcBaBcD \
+        \ .DcBcD. \
+        \ ..DcD.. \
+        \ ...D... "
+      field = constructField image
+   in do
+        scoreRed field @?= 0
+        scoreBlack field @?= 9
+        fmap snd (lastSurroundChain field) @?= Just Black
+        fmap (length . fst) (lastSurroundChain field) @?= Just 12
+
 applyControlSurroundingInSameTurn :: Assertion
 applyControlSurroundingInSameTurn =
   let image =
@@ -167,6 +184,34 @@ shouldNotLeaveEmptyInside =
         not (isPuttingAllowed field (3, 3)) @? "Putting in pos (3, 3) is allowed."
         not (isPuttingAllowed field (1, 1)) @? "Putting in pos (1, 1) is allowed."
 
+surroundInOppositeTurn :: Assertion
+surroundInOppositeTurn =
+  let image =
+        " .a. \
+        \ aBa \
+        \ .a. "
+      field = constructField image
+   in do
+        scoreRed field @?= 1
+        scoreBlack field @?= 0
+        fmap snd (lastSurroundChain field) @?= Just Red
+        fmap (length . fst) (lastSurroundChain field) @?= Just 4
+
+partlySurroundInOppositeTurn :: Assertion
+partlySurroundInOppositeTurn =
+  let image =
+        " .a.. \
+        \ aBa. \
+        \ .a.a \
+        \ ..a. "
+      field = constructField image
+   in do
+        scoreRed field @?= 1
+        scoreBlack field @?= 0
+        fmap snd (lastSurroundChain field) @?= Just Red
+        fmap (length . fst) (lastSurroundChain field) @?= Just 4
+        isPuttingAllowed field (2, 2) @? "Putting in pos (2, 2) is not allowed."
+
 holeInsideSurrounding :: Assertion
 holeInsideSurrounding =
   let image =
@@ -189,8 +234,8 @@ holeInsideSurrounding =
         not (isPuttingAllowed field (4, 4)) @? "Putting in pos (4, 4) is allowed."
         not (isPuttingAllowed field (4, 1)) @? "Putting in pos (4, 1) is allowed."
 
-holeInsideSurroundingAfterControlSurrounding :: Assertion
-holeInsideSurroundingAfterControlSurrounding =
+holeInsideSurroundingAfterOppositeTurnSurrounding :: Assertion
+holeInsideSurroundingAfterOppositeTurnSurrounding =
   let image =
         " ....b.... \
         \ ...b.b... \
@@ -249,6 +294,19 @@ twoSurroundingsWithCommonBorder =
         fmap (length . fst) (lastSurroundChain field) @?= Just 6
         fmap (head . fst) (lastSurroundChain field) @?= Just (1, 2)
 
+twoSurroundingsWithCommonDot :: Assertion
+twoSurroundingsWithCommonDot =
+  let image =
+        " .a.a. \
+        \ aBcBa \
+        \ .a.a. "
+      field = constructField image
+   in do
+        scoreRed field @?= 2
+        scoreBlack field @?= 0
+        fmap snd (lastSurroundChain field) @?= Just Red
+        fmap (length . fst) (lastSurroundChain field) @?= Just 8
+
 threeSurroundingsWithCommonBorders :: Assertion
 threeSurroundingsWithCommonBorders =
   let image =
@@ -264,3 +322,18 @@ threeSurroundingsWithCommonBorders =
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
         fmap (head . fst) (lastSurroundChain field) @?= Just (2, 2)
+
+twoSurroundingsWithCommonDotOneBorderlineEmptyPlace :: Assertion
+twoSurroundingsWithCommonDotOneBorderlineEmptyPlace =
+  let image =
+        " ..a.. \
+        \ .aBa. \
+        \ ..c.a \
+        \ .aBa. \
+        \ ..a.. "
+      field = constructField image
+   in do
+        scoreRed field @?= 2
+        scoreBlack field @?= 0
+        fmap snd (lastSurroundChain field) @?= Just Red
+        fmap (length . fst) (lastSurroundChain field) @?= Just 8
