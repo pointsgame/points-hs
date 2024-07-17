@@ -4,6 +4,7 @@ import Control.Exception.Base qualified as Exception
 import Data.Char
 import Data.List
 import Data.List.Split
+import Data.Maybe
 import Field
 import Player
 import Test.HUnit
@@ -23,7 +24,7 @@ constructField image =
                 (x, char) <- zip [0 ..] line,
                 toLower char /= toUpper char
             ]
-   in assertion $ foldl' (\field (pos, player) -> putPoint pos player field) (emptyField width' height') moves'
+   in assertion $ foldl' (\field (pos, player) -> fromJust $ putPoint pos player field) (emptyField width' height') moves'
 
 simpleSurround :: Assertion
 simpleSurround =
