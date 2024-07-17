@@ -37,7 +37,7 @@ simpleSurround =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
-        fmap (head . fst) (lastSurroundChain field) @?= Just (0, 1)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (0, 1)
 
 surroundEmptyTerritory :: Assertion
 surroundEmptyTerritory =
@@ -68,7 +68,7 @@ movePriority =
         scoreBlack field @?= 1
         fmap snd (lastSurroundChain field) @?= Just Black
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
-        fmap (head . fst) (lastSurroundChain field) @?= Just (1, 1)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 1)
 
 movePriorityBig :: Assertion
 movePriorityBig =
@@ -83,7 +83,7 @@ movePriorityBig =
         scoreBlack field @?= 2
         fmap snd (lastSurroundChain field) @?= Just Black
         fmap (length . fst) (lastSurroundChain field) @?= Just 6
-        fmap (head . fst) (lastSurroundChain field) @?= Just (1, 2)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 2)
 
 onionSurroundings :: Assertion
 onionSurroundings =
@@ -142,7 +142,7 @@ doubleSurround =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
-        fmap (head . fst) (lastSurroundChain field) @?= Just (2, 1)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (2, 1)
 
 doubleSurroundWithEmptyPart :: Assertion
 doubleSurroundWithEmptyPart =
@@ -156,7 +156,7 @@ doubleSurroundWithEmptyPart =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 4
-        fmap (head . fst) (lastSurroundChain field) @?= Just (2, 1)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (2, 1)
         isPuttingAllowed field (1, 1) @? "Putting in pos (1, 1) is not allowed."
         not (isPuttingAllowed field (3, 1)) @? "Putting in pos (3, 1) is allowed."
 
@@ -176,7 +176,7 @@ shouldNotLeaveEmptyInside =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 18
-        fmap (head . fst) (lastSurroundChain field) @?= Just (1, 3)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 3)
         not (isPuttingAllowed field (2, 3)) @? "Putting in pos (2, 3) is allowed."
         not (isPuttingAllowed field (2, 4)) @? "Putting in pos (2, 4) is allowed."
         not (isPuttingAllowed field (2, 2)) @? "Putting in pos (2, 2) is allowed."
@@ -230,7 +230,7 @@ holeInsideSurrounding =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 16
-        fmap (head . fst) (lastSurroundChain field) @?= Just (4, 8)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (4, 8)
         not (isPuttingAllowed field (4, 4)) @? "Putting in pos (4, 4) is allowed."
         not (isPuttingAllowed field (4, 1)) @? "Putting in pos (4, 1) is allowed."
 
@@ -292,7 +292,7 @@ twoSurroundingsWithCommonBorder =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 6
-        fmap (head . fst) (lastSurroundChain field) @?= Just (1, 2)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 2)
 
 twoSurroundingsWithCommonDot :: Assertion
 twoSurroundingsWithCommonDot =
@@ -321,7 +321,7 @@ threeSurroundingsWithCommonBorders =
         scoreBlack field @?= 0
         fmap snd (lastSurroundChain field) @?= Just Red
         fmap (length . fst) (lastSurroundChain field) @?= Just 8
-        fmap (head . fst) (lastSurroundChain field) @?= Just (2, 2)
+        fmap (last . fst) (lastSurroundChain field) @?= Just (2, 2)
 
 twoSurroundingsWithCommonDotOneBorderlineEmptyPlace :: Assertion
 twoSurroundingsWithCommonDotOneBorderlineEmptyPlace =

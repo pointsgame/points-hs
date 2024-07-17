@@ -276,14 +276,14 @@ capture point player =
       | otherwise -> BaseCell player False
     EmptyBaseCell _ -> BaseCell player False
 
-mergeCaptureChains :: Pos -> [NEL.NonEmpty Pos] -> [Pos] -- TODO why reverse?
-mergeCaptureChains pos chains = if length chains < 2 then reverse (concatMap NEL.toList chains) else mergeCaptureChains' chains
+mergeCaptureChains :: Pos -> [NEL.NonEmpty Pos] -> [Pos]
+mergeCaptureChains pos chains = if length chains < 2 then concatMap NEL.toList chains else mergeCaptureChains' chains
   where
     mergeCaptureChains' chains' =
       let firstChain = head chains'
           lastChain = last chains'
        in if NEL.head firstChain /= lastChain NEL.!! (length lastChain - 2)
-            then foldl' (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
+            then foldr (\p acc -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
             else mergeCaptureChains' $ tail chains' ++ [firstChain]
 
 putPoint :: Pos -> Player -> Field -> Field
