@@ -23,7 +23,7 @@ constructField image =
                 (x, char) <- zip [0 ..] line,
                 toLower char /= toUpper char
             ]
-   in assertion $ foldl (\field (pos, player) -> putPoint pos player field) (emptyField width' height') moves'
+   in assertion $ foldl' (\field (pos, player) -> putPoint pos player field) (emptyField width' height') moves'
 
 simpleSurround :: Assertion
 simpleSurround =

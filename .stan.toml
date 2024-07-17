@@ -1,5 +1,10 @@
 [[check]]
 type = "Exclude"
+id = "STAN-0103"
+scope = "all"
+
+[[check]]
+type = "Exclude"
 id = "STAN-0105"
 scope = "all"
 

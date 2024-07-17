@@ -295,7 +295,7 @@ mergeCaptureChains pos chains = if length chains < 2 then reverse (concatMap NEL
       let firstChain = head chains'
           lastChain = last chains'
        in if NEL.head firstChain /= lastChain NEL.!! (length lastChain - 2)
-            then foldl (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
+            then foldl' (\acc p -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
             else mergeCaptureChains' $ tail chains' ++ [firstChain]
 
 putPoint :: Pos -> Player -> Field -> Field
