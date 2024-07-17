@@ -277,14 +277,20 @@ capture point player =
     EmptyBaseCell _ -> BaseCell player False
 
 mergeCaptureChains :: Pos -> [NEL.NonEmpty Pos] -> [Pos]
-mergeCaptureChains pos chains = if length chains < 2 then concatMap NEL.toList chains else mergeCaptureChains' chains
+mergeCaptureChains pos chains =
+  maybe
+    (concatMap NEL.toList chains)
+    mergeCaptureChains'
+    ( find (\c -> NEL.length c >= 2) $
+        NEL.nonEmpty chains
+    )
   where
     mergeCaptureChains' chains' =
-      let firstChain = head chains'
-          lastChain = last chains'
+      let firstChain = NEL.head chains'
+          lastChain = NEL.last chains'
        in if NEL.head firstChain /= lastChain NEL.!! (length lastChain - 2)
             then foldr (\p acc -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
-            else mergeCaptureChains' $ tail chains' ++ [firstChain]
+            else mergeCaptureChains' $ NEL.prependList (NEL.tail chains') $ firstChain NEL.:| []
 
 putPoint :: Pos -> Player -> Field -> Field
 putPoint pos player field
