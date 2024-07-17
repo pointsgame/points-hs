@@ -26,7 +26,7 @@ module Field
   )
 where
 
-import Data.Array
+import Data.Array.IArray
 import Data.List
 import Data.List.NonEmpty qualified as NEL
 import Data.Maybe
@@ -109,37 +109,25 @@ isInside :: Field -> Pos -> Bool
 isInside = inRange . bounds . cells
 
 isPuttingAllowed :: Field -> Pos -> Bool
-isPuttingAllowed field pos
-  | not $ isInside field pos = False
-  | otherwise =
-      case cells field ! pos of
-        EmptyCell -> True
-        EmptyBaseCell _ -> True
-        _ -> False
+isPuttingAllowed field pos = case cells field !? pos of
+  Just EmptyCell -> True
+  Just (EmptyBaseCell _) -> True
+  _ -> False
 
 isPlayer :: Field -> Pos -> Player -> Bool
-isPlayer field pos player
-  | not $ isInside field pos = False
-  | otherwise =
-      case cells field ! pos of
-        PointCell player' -> player' == player
-        BaseCell player' _ -> player' == player
-        _ -> False
+isPlayer field pos player = case cells field !? pos of
+  Just (PointCell player') -> player' == player
+  Just (BaseCell player' _) -> player' == player
+  _ -> False
 
 isPlayersPoint :: Field -> Pos -> Player -> Bool
-isPlayersPoint field pos player
-  | not $ isInside field pos = False
-  | otherwise = cells field ! pos == PointCell player
+isPlayersPoint field pos player = cells field !? pos == Just (PointCell player)
 
 isCapturedPoint :: Field -> Pos -> Player -> Bool
-isCapturedPoint field pos player
-  | not $ isInside field pos = False
-  | otherwise = cells field ! pos == BaseCell (nextPlayer player) True
+isCapturedPoint field pos player = cells field !? pos == Just (BaseCell (nextPlayer player) True)
 
 isEmptyBase :: Field -> Pos -> Player -> Bool
-isEmptyBase field pos player
-  | not $ isInside field pos = False
-  | otherwise = cells field ! pos == EmptyBaseCell player
+isEmptyBase field pos player = cells field !? pos == Just (EmptyBaseCell player)
 
 wave :: Field -> Pos -> (Pos -> Bool) -> S.Set Pos
 wave field startPos f = wave' S.empty (S.singleton startPos)
