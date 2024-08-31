@@ -1,34 +1,49 @@
 cabal-version: 3.8
-
-name: points
-version: 1.0.0
-license: AGPL-3.0-or-later
-license-file: LICENSE.txt
-author: kurnevsky
-maintainer: kurnevsky@gmail.com
-build-type: Simple
+name:          points
+version:       1.0.0
+license:       AGPL-3.0-or-later
+license-file:  LICENSE.txt
+author:        kurnevsky
+maintainer:    kurnevsky@gmail.com
+build-type:    Simple
 
 common defaults
   default-language: GHC2021
-  ghc-options: -O2 -Wall
-  build-depends: base
+  ghc-options:      -O2 -Wall
+  build-depends:    base
 
 library
-  import: defaults
-  hs-source-dirs: field/src
-  exposed-modules: Player
-                 , Field
-  build-depends: array
-               , containers
+  import:          defaults
+  hs-source-dirs:  field/src
+  exposed-modules:
+    Field
+    Player
+
+  build-depends:
+    , array
+    , containers
+
+executable bench
+  import:         defaults
+  hs-source-dirs: bench/src
+  main-is:        Main.hs
+  build-depends:
+    , base
+    , MonadRandom
+    , optparse-applicative
+    , points
+    , random
+    , random-shuffle
 
 test-suite points-field-tests
-  import: defaults
-  type: exitcode-stdio-1.0
+  import:         defaults
+  type:           exitcode-stdio-1.0
   hs-source-dirs: field/tests
-  main-is: Tests.hs
-  other-modules: FieldTests
-  build-depends: split
-               , HUnit
-               , test-framework
-               , test-framework-hunit
-               , points
+  main-is:        Tests.hs
+  other-modules:  FieldTests
+  build-depends:
+    , HUnit
+    , points
+    , split
+    , test-framework
+    , test-framework-hunit

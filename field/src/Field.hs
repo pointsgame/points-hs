@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE TupleSections #-}
 
 module Field
@@ -23,6 +24,10 @@ module Field
     isPlayer,
     emptyField,
     putPoint,
+    lastPlayer,
+    nextPlayer',
+    putNextPoint,
+    winner,
   )
 where
 
@@ -94,12 +99,12 @@ data Field = Field
 
 width :: Field -> Int
 width field =
-  let ((x1, _), (x2, _)) = bounds (cells field)
+  let ((x1, _), (x2, _)) = bounds field.cells
    in x2 - x1 + 1
 
 height :: Field -> Int
 height field =
-  let ((_, y1), (_, y2)) = bounds (cells field)
+  let ((_, y1), (_, y2)) = bounds field.cells
    in y2 - y1 + 1
 
 isFull :: Field -> Bool
@@ -109,25 +114,25 @@ isInside :: Field -> Pos -> Bool
 isInside = inRange . bounds . cells
 
 isPuttingAllowed :: Field -> Pos -> Bool
-isPuttingAllowed field pos = case cells field !? pos of
+isPuttingAllowed field pos = case field.cells !? pos of
   Just EmptyCell -> True
   Just (EmptyBaseCell _) -> True
   _ -> False
 
 isPlayer :: Field -> Pos -> Player -> Bool
-isPlayer field pos player = case cells field !? pos of
+isPlayer field pos player = case field.cells !? pos of
   Just (PointCell player') -> player' == player
   Just (BaseCell player' _) -> player' == player
   _ -> False
 
 isPlayersPoint :: Field -> Pos -> Player -> Bool
-isPlayersPoint field pos player = cells field !? pos == Just (PointCell player)
+isPlayersPoint field pos player = field.cells !? pos == Just (PointCell player)
 
 isCapturedPoint :: Field -> Pos -> Player -> Bool
-isCapturedPoint field pos player = cells field !? pos == Just (BaseCell (nextPlayer player) True)
+isCapturedPoint field pos player = field.cells !? pos == Just (BaseCell (nextPlayer player) True)
 
 isEmptyBase :: Field -> Pos -> Player -> Bool
-isEmptyBase field pos player = cells field !? pos == Just (EmptyBaseCell player)
+isEmptyBase field pos player = field.cells !? pos == Just (EmptyBaseCell player)
 
 wave :: Field -> Pos -> (Pos -> Bool) -> S.Set Pos
 wave field startPos f = wave' S.empty (S.singleton startPos)
@@ -298,7 +303,7 @@ putPoint pos player field
   | otherwise =
       Just $
         let enemyPlayer = nextPlayer player
-            point = cells field ! pos
+            point = field.cells ! pos
             (enemyEmptyBaseChain, enemyEmptyBase) = getEmptyBase field pos enemyPlayer
             inputPoints = getInputPoints field pos player
             captures =
@@ -315,12 +320,12 @@ putPoint pos player field
             (realCaptures, emptyCaptures) = partition ((/= 0) . thd'') captures
             capturedCount = sum $ map thd'' realCaptures
             freedCount = sum $ map fth'' realCaptures
-            newEmptyBase = concatMap (filter (\pos' -> cells field ! pos' == EmptyCell) . snd'') emptyCaptures
+            newEmptyBase = concatMap (filter (\pos' -> field.cells ! pos' == EmptyCell) . snd'') emptyCaptures
             realCaptured = concatMap snd'' realCaptures
             captureChain = mergeCaptureChains pos $ map fst'' realCaptures
-            newScoreRed = if player == Red then scoreRed field + capturedCount else scoreRed field - freedCount
-            newScoreBlack = if player == Black then scoreBlack field + capturedCount else scoreBlack field - freedCount
-            newMoves = (pos, player) : moves field
+            newScoreRed = if player == Red then field.scoreRed + capturedCount else field.scoreRed - freedCount
+            newScoreBlack = if player == Black then field.scoreBlack + capturedCount else field.scoreBlack - freedCount
+            newMoves = (pos, player) : field.moves
          in if point == EmptyBaseCell enemyPlayer
               then
                 if not $ null captures
@@ -331,10 +336,10 @@ putPoint pos player field
                         moves = newMoves,
                         lastSurroundChain = Just (captureChain, player),
                         cells =
-                          cells field
+                          field.cells
                             // ( map (,EmptyCell) (S.toList enemyEmptyBase)
                                    ++ (pos, PointCell player)
-                                   : map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured
+                                   : map (\pos' -> (pos', capture (field.cells ! pos') player)) realCaptured
                                )
                       }
                   else
@@ -344,7 +349,7 @@ putPoint pos player field
                         moves = newMoves,
                         lastSurroundChain = Just (NEL.toList enemyEmptyBaseChain, enemyPlayer),
                         cells =
-                          cells field
+                          field.cells
                             // ( map (,BaseCell enemyPlayer False) (S.toList enemyEmptyBase)
                                    ++ [(pos, BaseCell enemyPlayer True)]
                                )
@@ -355,7 +360,7 @@ putPoint pos player field
                     field
                       { moves = newMoves,
                         lastSurroundChain = Nothing,
-                        cells = cells field // [(pos, PointCell player)]
+                        cells = field.cells // [(pos, PointCell player)]
                       }
                   else
                     Field
@@ -364,9 +369,24 @@ putPoint pos player field
                         moves = newMoves,
                         lastSurroundChain = if null captureChain then Nothing else Just (captureChain, player),
                         cells =
-                          cells field
+                          field.cells
                             // ( (pos, PointCell player)
                                    : map (,EmptyBaseCell player) newEmptyBase
-                                   ++ map (\pos' -> (pos', capture (cells field ! pos') player)) realCaptured
+                                   ++ map (\pos' -> (pos', capture (field.cells ! pos') player)) realCaptured
                                )
                       }
+
+lastPlayer :: Field -> Maybe Player
+lastPlayer = fmap snd . listToMaybe . moves
+
+nextPlayer' :: Field -> Player
+nextPlayer' = maybe Player.Red nextPlayer . lastPlayer
+
+putNextPoint :: Pos -> Field -> Maybe Field
+putNextPoint pos field = putPoint pos (nextPlayer' field) field
+
+winner :: Field -> Maybe Player
+winner field = case compare field.scoreBlack field.scoreRed of
+  LT -> Just Player.Red
+  GT -> Just Player.Black
+  EQ -> Nothing
