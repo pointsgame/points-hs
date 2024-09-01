@@ -4,6 +4,8 @@ import Control.Monad.Random.Strict
 import Data.Maybe (fromMaybe)
 import Field
 import Options.Applicative
+import Pipes (Producer, (<-<))
+import Pipes.Prelude qualified as Pipes
 import Player
 import System.Random.Shuffle
 
@@ -41,8 +43,8 @@ randomGame :: Int -> Int -> Rand StdGen Field
 randomGame width' height' = do
   foldr (\pos field -> fromMaybe field $ putNextPoint pos field) (emptyField width' height') <$> shuffleM (allMoves width' height')
 
-randomGames :: Int -> Int -> Int -> Rand StdGen [Field]
-randomGames games width' height' = replicateM games $ randomGame width' height'
+randomGames :: Int -> Int -> Int -> Producer Field (Rand StdGen) ()
+randomGames games width' height' = Pipes.replicateM games $ randomGame width' height'
 
 data Result = Result
   { redScoreResult :: !Int,
@@ -65,5 +67,5 @@ main :: IO ()
 main = do
   args <- execParser $ info argsParser (fullDesc <> progDesc "Field benchmark.")
   let gen = mkStdGen args.seedArgs
-      result = mconcat $ map gameResult $ flip evalRand gen $ randomGames args.gamesNumberArgs args.widthArgs args.heightArgs
+      result = flip evalRand gen $ Pipes.fold (<>) mempty id $ Pipes.map gameResult <-< randomGames args.gamesNumberArgs args.widthArgs args.heightArgs
   putStrLn $ show result.redScoreResult ++ ":" ++ show result.blackScoreResult

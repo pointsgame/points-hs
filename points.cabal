@@ -34,6 +34,7 @@ executable bench
     , points
     , random
     , random-shuffle
+    , pipes
 
 test-suite points-field-tests
   import:         defaults
