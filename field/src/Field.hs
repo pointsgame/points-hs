@@ -191,7 +191,7 @@ square chain = square' chain 0
     skewProduct (x1, y1) (x2, y2) = x1 * y2 - y1 * x2
 
 buildChain :: Field -> Pos -> Pos -> Player -> Maybe (NEL.NonEmpty Pos)
-buildChain field startPos nextPos player = if length chain > 2 && square chain > 0 then Just chain else Nothing
+buildChain field startPos nextPos player = if square chain > 0 then Just chain else Nothing
   where
     chain = getChain startPos $ nextPos NEL.:| [startPos]
     getChain start list@(h NEL.:| _) =
