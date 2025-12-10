@@ -32,7 +32,7 @@ module Field
 where
 
 import Data.Array.IArray
-import Data.List
+import Data.List hiding ((!?))
 import Data.List.NonEmpty qualified as NEL
 import Data.Maybe
 import Data.Set qualified as S
