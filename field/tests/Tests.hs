@@ -25,5 +25,7 @@ main =
       testCase "2 surroundings with common border" twoSurroundingsWithCommonBorder,
       testCase "2 surroundings with common dot" twoSurroundingsWithCommonDot,
       testCase "3 surroundings with common borders" threeSurroundingsWithCommonBorders,
-      testCase "2 surroundings with common dot, one borderline empty place" twoSurroundingsWithCommonDotOneBorderlineEmptyPlace
+      testCase "2 surroundings with common dot, one borderline empty place" twoSurroundingsWithCommonDotOneBorderlineEmptyPlace,
+      testCase "ambiguous surrounding 1" ambiguousSurrounding1,
+      testCase "ambiguous surrounding 2" ambiguousSurrounding2
     ]

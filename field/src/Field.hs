@@ -16,7 +16,8 @@ module Field
     scoreRed,
     scoreBlack,
     moves,
-    lastSurroundChain,
+    lastSurroundPlayer,
+    lastSurroundChains,
     width,
     height,
     isFull,
@@ -32,25 +33,14 @@ module Field
 where
 
 import Data.Array.IArray
-import Data.List hiding ((!?))
+import Data.List (find, group, sortBy)
 import Data.List.NonEmpty qualified as NEL
 import Data.Maybe
+import Data.Ord (comparing)
 import Data.Set qualified as S
 import Player
 
 type Pos = (Int, Int)
-
-fst'' :: (a1, a2, a3, a4) -> a1
-fst'' (a, _, _, _) = a
-
-snd'' :: (a1, a2, a3, a4) -> a2
-snd'' (_, a, _, _) = a
-
-thd'' :: (a1, a2, a3, a4) -> a3
-thd'' (_, _, a, _) = a
-
-fth'' :: (a1, a2, a3, a4) -> a4
-fth'' (_, _, _, a) = a
 
 count :: (a -> Bool) -> [a] -> Int
 count f = length . filter f
@@ -93,9 +83,11 @@ data Field = Field
   { scoreRed :: !Int,
     scoreBlack :: !Int,
     moves :: ![(Pos, Player)],
-    lastSurroundChain :: !(Maybe ([Pos], Player)),
+    lastSurroundPlayer :: !Player,
+    lastSurroundChains :: ![NEL.NonEmpty Pos],
     cells :: !(Array Pos Cell)
   }
+  deriving (Eq, Show)
 
 width :: Field -> Int
 width field =
@@ -149,7 +141,8 @@ emptyField width' height' =
     { scoreRed = 0,
       scoreBlack = 0,
       moves = [],
-      lastSurroundChain = Nothing,
+      lastSurroundPlayer = Red,
+      lastSurroundChains = [],
       cells = listArray ((0, 0), (width' - 1, height' - 1)) (repeat EmptyCell)
     }
 
@@ -281,22 +274,6 @@ capture point player =
       | otherwise -> BaseCell player False
     EmptyBaseCell _ -> BaseCell player False
 
-mergeCaptureChains :: Pos -> [NEL.NonEmpty Pos] -> [Pos]
-mergeCaptureChains pos chains =
-  maybe
-    (concatMap NEL.toList chains)
-    mergeCaptureChains'
-    ( find (\c -> NEL.length c >= 2) $
-        NEL.nonEmpty chains
-    )
-  where
-    mergeCaptureChains' chains' =
-      let firstChain = NEL.head chains'
-          lastChain = NEL.last chains'
-       in if NEL.head firstChain /= lastChain NEL.!! (length lastChain - 2)
-            then foldr (\p acc -> if p /= pos && elem p acc then dropWhile (/= p) acc else p : acc) [] $ concatMap NEL.toList chains'
-            else mergeCaptureChains' $ NEL.prependList (NEL.tail chains') $ firstChain NEL.:| []
-
 putPoint :: Pos -> Player -> Field -> Maybe Field
 putPoint pos player field
   | not (isPuttingAllowed field pos) = Nothing
@@ -304,77 +281,79 @@ putPoint pos player field
       Just $
         let enemyPlayer = nextPlayer player
             point = field.cells ! pos
-            (enemyEmptyBaseChain, enemyEmptyBase) = getEmptyBase field pos enemyPlayer
-            inputPoints = getInputPoints field pos player
-            captures =
-              mapMaybe
-                ( \(chainPos, capturedPos) ->
-                    do
-                      chain <- buildChain field pos chainPos player
-                      let captured = S.elems $ getInsideRing field capturedPos chain
-                          capturedCount' = count (\pos' -> isPlayersPoint field pos' enemyPlayer) captured
-                          freedCount' = count (\pos' -> isCapturedPoint field pos' player) captured
-                      return (chain, captured, capturedCount', freedCount')
-                )
-                inputPoints
-            (realCaptures, emptyCaptures) = partition ((/= 0) . thd'') captures
-            capturedCount = sum $ map thd'' realCaptures
-            freedCount = sum $ map fth'' realCaptures
-            newEmptyBase = concatMap (filter (\pos' -> field.cells ! pos' == EmptyCell) . snd'') emptyCaptures
-            realCaptured = concatMap snd'' realCaptures
-            captureChain = mergeCaptureChains pos $ map fst'' realCaptures
-            newScoreRed = if player == Red then field.scoreRed + capturedCount else field.scoreRed - freedCount
-            newScoreBlack = if player == Black then field.scoreBlack + capturedCount else field.scoreBlack - freedCount
             newMoves = (pos, player) : field.moves
-         in if point == EmptyBaseCell enemyPlayer
+         in if point == EmptyBaseCell player
               then
-                if not $ null captures
-                  then
-                    Field
-                      { scoreRed = newScoreRed,
-                        scoreBlack = newScoreBlack,
-                        moves = newMoves,
-                        lastSurroundChain = Just (captureChain, player),
-                        cells =
-                          field.cells
-                            // ( map (,EmptyCell) (S.toList enemyEmptyBase)
-                                   ++ (pos, PointCell player)
-                                   : map (\pos' -> (pos', capture (field.cells ! pos') player)) realCaptured
-                               )
-                      }
-                  else
-                    Field
-                      { scoreRed = if player == Red then scoreRed field else scoreRed field + 1,
-                        scoreBlack = if player == Black then scoreBlack field else scoreBlack field + 1,
-                        moves = newMoves,
-                        lastSurroundChain = Just (NEL.toList enemyEmptyBaseChain, enemyPlayer),
-                        cells =
-                          field.cells
-                            // ( map (,BaseCell enemyPlayer False) (S.toList enemyEmptyBase)
-                                   ++ [(pos, BaseCell enemyPlayer True)]
-                               )
-                      }
+                field
+                  { moves = newMoves,
+                    lastSurroundPlayer = player,
+                    lastSurroundChains = [],
+                    cells = field.cells // [(pos, PointCell player)]
+                  }
               else
-                if point == EmptyBaseCell player
-                  then
-                    field
-                      { moves = newMoves,
-                        lastSurroundChain = Nothing,
-                        cells = field.cells // [(pos, PointCell player)]
-                      }
-                  else
-                    Field
-                      { scoreRed = newScoreRed,
-                        scoreBlack = newScoreBlack,
-                        moves = newMoves,
-                        lastSurroundChain = if null captureChain then Nothing else Just (captureChain, player),
-                        cells =
-                          field.cells
-                            // ( (pos, PointCell player)
-                                   : map (,EmptyBaseCell player) newEmptyBase
-                                   ++ map (\pos' -> (pos', capture (field.cells ! pos') player)) realCaptured
-                               )
-                      }
+                let inputPoints = getInputPoints field pos player
+                    potentialChains =
+                      [ (chain, capturedPos)
+                      | (chainPos, capturedPos) <- inputPoints,
+                        chain <- maybeToList $ buildChain field pos chainPos player
+                      ]
+                    sortedChains = sortBy (comparing (NEL.length . fst)) potentialChains
+                    initialField = field {lastSurroundPlayer = player, lastSurroundChains = []}
+                    fieldWithCaptures =
+                      foldl'
+                        ( \field' (chain, capturedPos) ->
+                            let captured = S.elems $ getInsideRing field' capturedPos chain
+                                capturedCount = count (\pos' -> isPlayersPoint field' pos' enemyPlayer) captured
+                                freedCount = count (\pos' -> isCapturedPoint field' pos' player) captured
+                             in if capturedCount > 0
+                                  then
+                                    field'
+                                      { scoreRed = if player == Red then field'.scoreRed + capturedCount else field'.scoreRed - freedCount,
+                                        scoreBlack = if player == Black then field'.scoreBlack + capturedCount else field'.scoreBlack - freedCount,
+                                        lastSurroundChains = chain : field'.lastSurroundChains,
+                                        cells =
+                                          field'.cells
+                                            // map (\pos' -> (pos', capture (field'.cells ! pos') player)) captured
+                                      }
+                                  else
+                                    field'
+                                      { cells =
+                                          field'.cells
+                                            // map (,EmptyBaseCell player) (filter (\pos' -> field'.cells ! pos' == EmptyCell) captured)
+                                      }
+                        )
+                        initialField
+                        sortedChains
+                 in if point == EmptyBaseCell enemyPlayer
+                      then
+                        if not $ null fieldWithCaptures.lastSurroundChains
+                          then -- We broke the enemy base
+                            let enemyEmptyBase = wave fieldWithCaptures pos (\pos' -> isEmptyBase fieldWithCaptures pos' enemyPlayer)
+                             in fieldWithCaptures
+                                  { moves = newMoves,
+                                    cells =
+                                      fieldWithCaptures.cells
+                                        // ((pos, PointCell player) : map (,EmptyCell) (S.toList enemyEmptyBase))
+                                  }
+                          else -- Suicide move (placed in enemy base without capturing)
+                            let (enemyEmptyBaseChain, enemyEmptyBase) = getEmptyBase field pos enemyPlayer
+                             in fieldWithCaptures
+                                  { scoreRed = if player == Red then field.scoreRed else field.scoreRed + 1,
+                                    scoreBlack = if player == Black then field.scoreBlack else field.scoreBlack + 1,
+                                    moves = newMoves,
+                                    lastSurroundPlayer = enemyPlayer,
+                                    lastSurroundChains = [enemyEmptyBaseChain],
+                                    cells =
+                                      field.cells
+                                        // ( (pos, BaseCell enemyPlayer True)
+                                               : map (,BaseCell enemyPlayer False) (S.toList enemyEmptyBase)
+                                           )
+                                  }
+                      else -- Normal placement
+                        fieldWithCaptures
+                          { moves = newMoves,
+                            cells = fieldWithCaptures.cells // [(pos, PointCell player)]
+                          }
 
 lastPlayer :: Field -> Maybe Player
 lastPlayer = fmap snd . listToMaybe . moves

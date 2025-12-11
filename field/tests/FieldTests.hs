@@ -3,6 +3,7 @@ module FieldTests where
 import Control.Exception.Base qualified as Exception
 import Data.Char
 import Data.List
+import Data.List.NonEmpty qualified as NEL
 import Data.List.Split
 import Data.Maybe
 import Field
@@ -20,9 +21,9 @@ constructField image =
           sortOn
             (\(_, _, char) -> (toLower char, isLower char))
             [ (x, y, char)
-              | (y, line) <- zip [0 ..] lines',
-                (x, char) <- zip [0 ..] line,
-                toLower char /= toUpper char
+            | (y, line) <- zip [0 ..] lines',
+              (x, char) <- zip [0 ..] line,
+              toLower char /= toUpper char
             ]
    in assertion $ foldl' (\field (pos, player) -> fromJust $ putPoint pos player field) (emptyField width' height') moves'
 
@@ -36,9 +37,8 @@ simpleSurround =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
-        fmap (last . fst) (lastSurroundChain field) @?= Just (0, 1)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 surroundEmptyTerritory :: Assertion
 surroundEmptyTerritory =
@@ -50,7 +50,7 @@ surroundEmptyTerritory =
    in do
         scoreRed field @?= 0
         scoreBlack field @?= 0
-        lastSurroundChain field @?= Nothing
+        lastSurroundChains field @?= []
         isPuttingAllowed field (1, 1) @? "Putting in pos (1, 1) is not allowed."
         not (isPuttingAllowed field (0, 1)) @? "Putting in pos (0, 1) is allowed."
         not (isPuttingAllowed field (1, 0)) @? "Putting in pos (1, 0) is allowed."
@@ -67,9 +67,8 @@ movePriority =
    in do
         scoreRed field @?= 0
         scoreBlack field @?= 1
-        fmap snd (lastSurroundChain field) @?= Just Black
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
-        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 1)
+        lastSurroundPlayer field @?= Black
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 movePriorityBig :: Assertion
 movePriorityBig =
@@ -82,9 +81,8 @@ movePriorityBig =
    in do
         scoreRed field @?= 0
         scoreBlack field @?= 2
-        fmap snd (lastSurroundChain field) @?= Just Black
-        fmap (length . fst) (lastSurroundChain field) @?= Just 6
-        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 2)
+        lastSurroundPlayer field @?= Black
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 onionSurroundings :: Assertion
 onionSurroundings =
@@ -98,8 +96,8 @@ onionSurroundings =
    in do
         scoreRed field @?= 4
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 8
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 8
 
 deepOnionSurroundings :: Assertion
 deepOnionSurroundings =
@@ -115,8 +113,8 @@ deepOnionSurroundings =
    in do
         scoreRed field @?= 0
         scoreBlack field @?= 9
-        fmap snd (lastSurroundChain field) @?= Just Black
-        fmap (length . fst) (lastSurroundChain field) @?= Just 12
+        lastSurroundPlayer field @?= Black
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 12
 
 applyControlSurroundingInSameTurn :: Assertion
 applyControlSurroundingInSameTurn =
@@ -128,8 +126,8 @@ applyControlSurroundingInSameTurn =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 doubleSurround :: Assertion
 doubleSurround =
@@ -141,9 +139,8 @@ doubleSurround =
    in do
         scoreRed field @?= 2
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 8
-        fmap (last . fst) (lastSurroundChain field) @?= Just (2, 1)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 doubleSurroundWithEmptyPart :: Assertion
 doubleSurroundWithEmptyPart =
@@ -155,9 +152,8 @@ doubleSurroundWithEmptyPart =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
-        fmap (last . fst) (lastSurroundChain field) @?= Just (2, 1)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
         isPuttingAllowed field (1, 1) @? "Putting in pos (1, 1) is not allowed."
         not (isPuttingAllowed field (3, 1)) @? "Putting in pos (3, 1) is allowed."
 
@@ -175,9 +171,8 @@ shouldNotLeaveEmptyInside =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 18
-        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 3)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 18
         not (isPuttingAllowed field (2, 3)) @? "Putting in pos (2, 3) is allowed."
         not (isPuttingAllowed field (2, 4)) @? "Putting in pos (2, 4) is allowed."
         not (isPuttingAllowed field (2, 2)) @? "Putting in pos (2, 2) is allowed."
@@ -195,8 +190,8 @@ surroundInOppositeTurn =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 partlySurroundInOppositeTurn :: Assertion
 partlySurroundInOppositeTurn =
@@ -209,8 +204,8 @@ partlySurroundInOppositeTurn =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
         isPuttingAllowed field (2, 2) @? "Putting in pos (2, 2) is not allowed."
 
 holeInsideSurrounding :: Assertion
@@ -229,9 +224,8 @@ holeInsideSurrounding =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 16
-        fmap (last . fst) (lastSurroundChain field) @?= Just (4, 8)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 16
         not (isPuttingAllowed field (4, 4)) @? "Putting in pos (4, 4) is allowed."
         not (isPuttingAllowed field (4, 1)) @? "Putting in pos (4, 1) is allowed."
 
@@ -251,8 +245,8 @@ holeInsideSurroundingAfterOppositeTurnSurrounding =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 16
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 16
         not (isPuttingAllowed field (4, 4)) @? "Putting in pos (4, 4) is allowed."
         not (isPuttingAllowed field (4, 1)) @? "Putting in pos (4, 1) is allowed."
 
@@ -272,8 +266,8 @@ surroundingDoesNotExpand =
    in do
         scoreRed field @?= 1
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 4
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
         isPuttingAllowed field (6, 3) @? "Putting in pos (6, 3) is allowed."
         isPuttingAllowed field (4, 3) @? "Putting in pos (4, 3) is allowed."
         isPuttingAllowed field (4, 5) @? "Putting in pos (4, 5) is allowed."
@@ -291,9 +285,8 @@ twoSurroundingsWithCommonBorder =
    in do
         scoreRed field @?= 2
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 6
-        fmap (last . fst) (lastSurroundChain field) @?= Just (1, 2)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 twoSurroundingsWithCommonDot :: Assertion
 twoSurroundingsWithCommonDot =
@@ -305,8 +298,8 @@ twoSurroundingsWithCommonDot =
    in do
         scoreRed field @?= 2
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 8
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 threeSurroundingsWithCommonBorders :: Assertion
 threeSurroundingsWithCommonBorders =
@@ -320,9 +313,8 @@ threeSurroundingsWithCommonBorders =
    in do
         scoreRed field @?= 3
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 8
-        fmap (last . fst) (lastSurroundChain field) @?= Just (2, 2)
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
 
 twoSurroundingsWithCommonDotOneBorderlineEmptyPlace :: Assertion
 twoSurroundingsWithCommonDotOneBorderlineEmptyPlace =
@@ -336,5 +328,39 @@ twoSurroundingsWithCommonDotOneBorderlineEmptyPlace =
    in do
         scoreRed field @?= 2
         scoreBlack field @?= 0
-        fmap snd (lastSurroundChain field) @?= Just Red
-        fmap (length . fst) (lastSurroundChain field) @?= Just 8
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
+
+ambiguousSurrounding1 :: Assertion
+ambiguousSurrounding1 =
+  let image =
+        " .aa.aa. \
+        \ a..b..a \
+        \ a.aAa.a \
+        \ a..a..a \
+        \ .a...a. \
+        \ ..aaa.. "
+      field = constructField image
+   in do
+        scoreRed field @?= 1
+        scoreBlack field @?= 0
+        isPuttingAllowed field (3, 4) @? "Putting in pos (3, 4) is not allowed."
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
+
+ambiguousSurrounding2 :: Assertion
+ambiguousSurrounding2 =
+  let image =
+        " ..aaa.. \
+        \ .a...a. \
+        \ a..a..a \
+        \ a.aAa.a \
+        \ a..b..a \
+        \ .aa.aa. "
+      field = constructField image
+   in do
+        scoreRed field @?= 1
+        scoreBlack field @?= 0
+        isPuttingAllowed field (3, 1) @? "Putting in pos (3, 1) is not allowed."
+        lastSurroundPlayer field @?= Red
+        fmap NEL.length (listToMaybe (lastSurroundChains field)) @?= Just 4
